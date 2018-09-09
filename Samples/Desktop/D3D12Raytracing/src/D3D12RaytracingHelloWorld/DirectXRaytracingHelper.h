@@ -297,6 +297,17 @@ inline bool EnableComputeRaytracingFallback(IDXGIAdapter1* adapter)
 // Returns bool whether the call succeeded and the device supports the feature.
 inline bool EnableRaytracing(IDXGIAdapter1* adapter)
 {
+#if 1 // DXR only
+    ComPtr<ID3D12Device> testDevice;
+    ComPtr<ID3D12Device5> testRaytracingDevice;
+    UUID experimentalFeatures[] = { D3D12ExperimentalShaderModels/*, D3D12RaytracingPrototype */ };
+
+    return SUCCEEDED(D3D12EnableExperimentalFeatures(1, experimentalFeatures, nullptr, nullptr))
+        && SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&testDevice)))
+        && SUCCEEDED(testDevice->QueryInterface(IID_PPV_ARGS(&testRaytracingDevice)));
+
+
+#else // ToDo add FL support
     ComPtr<ID3D12Device> testDevice;
     ComPtr<ID3D12DeviceRaytracingPrototype> testRaytracingDevice;
     UUID experimentalFeatures[] = { D3D12ExperimentalShaderModels, D3D12RaytracingPrototype };
@@ -304,4 +315,5 @@ inline bool EnableRaytracing(IDXGIAdapter1* adapter)
     return SUCCEEDED(D3D12EnableExperimentalFeatures(2, experimentalFeatures, nullptr, nullptr))
         && SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&testDevice)))
         && SUCCEEDED(testDevice->QueryInterface(IID_PPV_ARGS(&testRaytracingDevice)));
+#endif
 }

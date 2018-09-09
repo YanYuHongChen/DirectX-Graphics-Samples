@@ -69,7 +69,7 @@ class ShaderTable : public GpuUploadBuffer
 
     ShaderTable() {}
 public:
-    ShaderTable(ID3D12Device* device, UINT numShaderRecords, UINT shaderRecordSize, LPCWSTR resourceName = nullptr) 
+    ShaderTable(ID3D12Device* device, UINT numShaderRecords, UINT shaderRecordSize, LPCWSTR resourceName = nullptr)
         : m_name(resourceName)
     {
         m_shaderRecordSize = Align(shaderRecordSize, D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
@@ -78,7 +78,7 @@ public:
         Allocate(device, bufferSize, resourceName);
         m_mappedShaderRecords = MapCpuWriteOnly();
     }
-    
+
     void push_back(const ShaderRecord& shaderRecord)
     {
         ThrowIfFalse(m_shaderRecords.size() < m_shaderRecords.capacity());
@@ -94,9 +94,9 @@ public:
     {
         std::wstringstream wstr;
         wstr << L"|--------------------------------------------------------------------\n";
-        wstr << L"|Shader table - " << m_name.c_str() << L": " 
-             << m_shaderRecordSize << L" | "
-             << m_shaderRecords.size() * m_shaderRecordSize << L" bytes\n";
+        wstr << L"|Shader table - " << m_name.c_str() << L": "
+            << m_shaderRecordSize << L" | "
+            << m_shaderRecords.size() * m_shaderRecordSize << L" bytes\n";
 
         for (UINT i = 0; i < m_shaderRecords.size(); i++)
         {
@@ -201,7 +201,7 @@ inline void PrintStateObjectDesc(const D3D12_STATE_OBJECT_DESC* desc)
         switch (desc->pSubobjects[i].Type)
         {
         case D3D12_STATE_SUBOBJECT_TYPE_GLOBAL_ROOT_SIGNATURE:
-            wstr << L"Root Signature 0x" << desc->pSubobjects[i].pDesc << L"\n";
+            wstr << L"Global Root Signature 0x" << desc->pSubobjects[i].pDesc << L"\n";
             break;
         case D3D12_STATE_SUBOBJECT_TYPE_LOCAL_ROOT_SIGNATURE:
             wstr << L"Local Root Signature 0x" << desc->pSubobjects[i].pDesc << L"\n";
@@ -297,6 +297,17 @@ inline bool EnableComputeRaytracingFallback(IDXGIAdapter1* adapter)
 // Returns bool whether the call succeeded and the device supports the feature.
 inline bool EnableRaytracing(IDXGIAdapter1* adapter)
 {
+#if 1 // DXR only
+    ComPtr<ID3D12Device> testDevice;
+    ComPtr<ID3D12Device5> testRaytracingDevice;
+    UUID experimentalFeatures[] = { D3D12ExperimentalShaderModels/*, D3D12RaytracingPrototype */ };
+
+    return SUCCEEDED(D3D12EnableExperimentalFeatures(1, experimentalFeatures, nullptr, nullptr))
+        && SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&testDevice)))
+        && SUCCEEDED(testDevice->QueryInterface(IID_PPV_ARGS(&testRaytracingDevice)));
+
+
+#else // ToDo add FL support
     ComPtr<ID3D12Device> testDevice;
     ComPtr<ID3D12DeviceRaytracingPrototype> testRaytracingDevice;
     UUID experimentalFeatures[] = { D3D12ExperimentalShaderModels, D3D12RaytracingPrototype };
@@ -304,16 +315,5 @@ inline bool EnableRaytracing(IDXGIAdapter1* adapter)
     return SUCCEEDED(D3D12EnableExperimentalFeatures(2, experimentalFeatures, nullptr, nullptr))
         && SUCCEEDED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&testDevice)))
         && SUCCEEDED(testDevice->QueryInterface(IID_PPV_ARGS(&testRaytracingDevice)));
-}
-
-inline void StoreXMMatrixAsTransform3x4
-(
-    float transform3x4[12],
-    const XMMATRIX& m
-)
-{
-    XMMATRIX mT = XMMatrixTranspose(m); // convert row-major to column-major
-    XMStoreFloat4(reinterpret_cast<XMFLOAT4*>(&transform3x4[0]), mT.r[0]);
-    XMStoreFloat4(reinterpret_cast<XMFLOAT4*>(&transform3x4[4]), mT.r[1]);
-    XMStoreFloat4(reinterpret_cast<XMFLOAT4*>(&transform3x4[8]), mT.r[2]);
+#endif
 }
